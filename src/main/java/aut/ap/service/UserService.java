@@ -290,17 +290,22 @@ public class UserService {
         }
 
         System.out.println("Add a message (optional): ");
-        String message = sc.nextLine();
+        String message = sc.nextLine().trim();
 
         String forwardSubject = original.getSubject().startsWith("FWD:") ?
                 original.getSubject() : "FWD: " + original.getSubject();
 
-        String forwardBody = message + "\n\n--- Forwarded message ---\nFrom: " +
+        String forwardedHeader = "--- Forwarded message ---\nFrom: " +
                 original.getSender().getEmail() + "\nSubject: " + original.getSubject() +
                 "\n\n" + original.getBody();
+
+        String forwardBody = message.isBlank()
+                ? forwardedHeader
+                : message + "\n\n" + forwardedHeader;
 
         EmailService.sendEmail(user, recipientUsers, forwardSubject, forwardBody);
         System.out.println("Email forwarded.");
     }
+
 
 }

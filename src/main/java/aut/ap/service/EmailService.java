@@ -4,7 +4,7 @@ import aut.ap.framework.SingletonSessionFactory;
 import aut.ap.model.Email;
 import aut.ap.model.Recipient;
 import aut.ap.model.User;
-import com.mysql.cj.Session;
+import org.hibernate.Session;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -123,16 +123,17 @@ public class EmailService {
     }
 
     public static Email getEmailByCodeAndUser(String code, User user) {
-        try (Session session = HibernateUtil.getSession()) {
-            return session.createQuery("""
-                select e from Email e
-                join Recipient r on e.id = r.email.id
-                where e.emailCode = :code and r.recipientUser = :user
-                """, Email.class)
-                    .setParameter("code", code)
-                    .setParameter("user", user)
-                    .uniqueResult();
-        }
+        return SingletonSessionFactory.get().fromTransaction(session ->
+                session.createQuery("""
+            select e from Email e
+            join fetch e.sender
+            join Recipient r on e.id = r.email.id
+            where e.emailCode = :code and r.recipientUser = :user
+        """, Email.class)
+                        .setParameter("code", code)
+                        .setParameter("user", user)
+                        .uniqueResult()
+        );
     }
 
 }
