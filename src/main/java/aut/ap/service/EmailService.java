@@ -31,9 +31,11 @@ public class EmailService {
         List<Email> list = SingletonSessionFactory.get()
                 .fromTransaction(session ->
                         session.createQuery(
-                                        "SELECT r.email FROM Recipient r " +
-                                                "JOIN FETCH r.email.sender " +
-                                                "WHERE r.recipientUser.id = :userId AND r.isRead = false", Email.class)
+                                        "SELECT recipient.email " +
+                                                "FROM Recipient recipient " +
+                                                "JOIN FETCH recipient.email.sender " +
+                                                "WHERE recipient.recipientUser.id = :userId " +
+                                                "AND recipient.isRead = false", Email.class)
                                 .setParameter("userId", user.getId())
                                 .getResultList());
 
@@ -43,22 +45,15 @@ public class EmailService {
         }
     }
 
-
-
-
     public static void showAllEmails(User user) {
         List<Email> emails = SingletonSessionFactory.get()
-                .fromTransaction(session ->
-                        session.createQuery(
-                                        "SELECT DISTINCT e FROM Email e " +
-                                                "JOIN FETCH e.sender " +
-                                                "JOIN e.recipients r " +
-                                                "WHERE r.recipientUser.id = :userId " +
-                                                "ORDER BY e.sentAt DESC",
-                                        Email.class)
-                                .setParameter("userId", user.getId())
-                                .getResultList()
-                );
+                .fromTransaction(session -> session.createQuery(
+                                "SELECT DISTINCT r.email FROM Recipient r " +
+                                        "JOIN FETCH r.email.sender " +
+                                        "WHERE r.recipientUser.id = :userId " +
+                                        "ORDER BY r.email.sentAt DESC", Email.class)
+                        .setParameter("userId", user.getId())
+                        .getResultList());
 
         System.out.println("All received emails: ");
         for (Email email : emails) {
@@ -66,14 +61,11 @@ public class EmailService {
         }
     }
 
-
     public static void showSentEmails(User user) {
         List<Email> emails = SingletonSessionFactory.get()
                 .fromTransaction(session ->
                         session.createQuery(
-                                        "FROM Email e " +
-                                                "WHERE e.sender.id = :userId " +
-                                                "ORDER BY e.sentAt DESC",
+                                        "FROM Email e JOIN FETCH e.sender WHERE e.sender.id = :userId ORDER BY e.sentAt DESC",
                                         Email.class)
                                 .setParameter("userId", user.getId())
                                 .getResultList()
@@ -89,7 +81,8 @@ public class EmailService {
         Email email = SingletonSessionFactory.get()
                 .fromTransaction(session ->
                         session.createQuery(
-                                        "FROM Email e " +
+                                        "SELECT e FROM Email e " +
+                                                "JOIN FETCH e.sender " +
                                                 "WHERE e.emailCode = :code " +
                                                 "AND (e.sender.id = :userId OR EXISTS (" +
                                                 "SELECT 1 FROM Recipient r " +
@@ -108,7 +101,8 @@ public class EmailService {
         List<String> recipients = SingletonSessionFactory.get()
                 .fromTransaction(session ->
                         session.createQuery(
-                                        "SELECT r.recipientUser.email FROM Recipient r WHERE r.email.id = :emailId",
+                                        "SELECT r.recipientUser.email FROM Recipient r " +
+                                                "WHERE r.email.id = :emailId",
                                         String.class)
                                 .setParameter("emailId", email.getId())
                                 .getResultList()
@@ -122,18 +116,21 @@ public class EmailService {
         System.out.println(email.getBody());
     }
 
-    public static Email getEmailByCodeAndUser(String code, User user) {
-        return SingletonSessionFactory.get().fromTransaction(session ->
-                session.createQuery("""
-            select e from Email e
-            join fetch e.sender
-            join Recipient r on e.id = r.email.id
-            where e.emailCode = :code and r.recipientUser = :user
-        """, Email.class)
-                        .setParameter("code", code)
-                        .setParameter("user", user)
-                        .uniqueResult()
-        );
+    public static Email getEmailByCodeAndUser(String emailCode, User user) {
+        return SingletonSessionFactory.get()
+                .fromTransaction(session ->
+                        session.createQuery(
+                                        "SELECT e FROM Email e " +
+                                                "JOIN FETCH e.sender " +
+                                                "WHERE e.emailCode = :code " +
+                                                "AND (e.sender.id = :userId OR EXISTS (" +
+                                                "SELECT 1 FROM Recipient r " +
+                                                "WHERE r.email.id = e.id AND r.recipientUser.id = :userId))",
+                                        Email.class)
+                                .setParameter("code", emailCode)
+                                .setParameter("userId", user.getId())
+                                .uniqueResult()
+                );
     }
 
 }

@@ -17,9 +17,20 @@ public class UserService {
         String name = sc.nextLine();
         System.out.print("Email: ");
         String email = sc.nextLine().toLowerCase();
+
+        if (email.contains("@")) {
+            email = email.substring(0, email.indexOf("@"));
+        }
+
         if (!email.endsWith(DOMAIN)) {
             email += DOMAIN;
         }
+
+        User userExist = findByEmail(email);
+        if (userExist != null) {
+            throw new RuntimeException("Email already exists");
+        }
+
         String password;
         while (true) {
             System.out.println("Password (at least 8 characters): ");
@@ -31,24 +42,21 @@ public class UserService {
             }
         }
 
-        User userExist = findByEmail(email);
-        if (userExist != null) {
-            throw new RuntimeException("Email already exists");
-        }
-
         persist(name, email, password);
-        System.out.println("Your new account is created. ");
+        System.out.println("Your new account is created.");
         System.out.println("--Please login Again--");
     }
 
     public static void Login() {
         System.out.print("Email: ");
         String email = sc.nextLine().toLowerCase();
-        if (!email.contains("@")) {
-            email += DOMAIN;
-        } else if (!email.endsWith(DOMAIN)) {
 
+        if (email.contains("@")) {
+            email = email.substring(0, email.indexOf("@"));
+        } else {
+            email += DOMAIN;
         }
+
         System.out.print("Password: ");
         String password = sc.nextLine();
         User user = findByEmail(email);
