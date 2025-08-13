@@ -1,5 +1,6 @@
 package aut.ap.service;
 
+import aut.ap.Encryption.PasswordUtils;
 import aut.ap.framework.SingletonSessionFactory;
 import aut.ap.model.Email;
 import aut.ap.model.User;
@@ -59,8 +60,9 @@ public class UserService {
 
         System.out.print("Password: ");
         String password = sc.nextLine();
+
         User user = findByEmail(email);
-        if (user != null && user.getPassword().equals(password)) {
+        if (user != null && PasswordUtils.checkPassword(password, user.getPassword())) {
             System.out.println("Welcome back, " + user.getName());
             System.out.println();
             EmailService.showUnreadEmails(user);
@@ -80,11 +82,11 @@ public class UserService {
     }
 
     public static void persist(String name, String email, String password) {
-        User user = new User(name, email, password);
+        String hashedPassword = PasswordUtils.hashPassword(password);
+        User user = new User(name, email, hashedPassword);
+
         SingletonSessionFactory.get()
-                .inTransaction(session -> {
-                    session.persist(user);
-                });
+                .inTransaction(session -> session.persist(user));
     }
 
     public static void LoginPage(User user) {
